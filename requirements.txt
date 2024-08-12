@@ -1,2 +1,5 @@
 tqdm
 pytictoc
+psycopg2
+sqlalchemy
+geoalchemy2

@@ -163,3 +163,5 @@ cython_debug/
 
 *.gdb/
 *_tmp/
+*plss.zip
+.qgz

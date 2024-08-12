@@ -16,6 +16,13 @@ FROM pepperlk/dev-gis
 
 # # copy the local arcgis_helpers package to the container
 
+# install gdal
+RUN apt-get update && apt-get install -y \
+    gdal-bin \
+    libgdal-dev \
+    python3-gdal \
+    && rm -rf /var/lib/apt/lists/*
+
 
 
 WORKDIR /app
