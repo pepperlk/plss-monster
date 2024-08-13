@@ -183,6 +183,30 @@ def irregular_subdivision(polygon, side_length):
    
 
 
+    north_distance = distance(nw_point, ne_point)
+    east_distance = distance(ne_point, se_point)
+    south_distance = distance(se_point, sw_point)
+    west_distance = distance(sw_point, nw_point)
+    
+    x_sides_avg = (north_distance + south_distance) / 2
+    y_sides_avg = (east_distance + west_distance) / 2
+
+    # get avg and std deviation of the distances
+    x_std_dev = math.sqrt(((north_distance - x_sides_avg) ** 2 + (south_distance - x_sides_avg) ** 2) / 2)
+    y_std_dev = math.sqrt(((east_distance - y_sides_avg) ** 2 + (west_distance - y_sides_avg) ** 2) / 2)
+
+
+    # if the std deviation is less than 40 then we can assume that the polygon is a square or close to a square
+    # find what is longer x or y average
+    if x_sides_avg > y_sides_avg:
+        side_length = x_sides_avg/2
+    else:
+        side_length = y_sides_avg /2
+
+
+
+
+
     # get the closest to a right angle corner
     angles = []
 
@@ -224,7 +248,8 @@ def irregular_subdivision(polygon, side_length):
 
 
 
-
+    if x_std_dev < 40 and y_std_dev < 40:
+        corner ="SW"
 
     
    

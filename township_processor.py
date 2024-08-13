@@ -145,6 +145,11 @@ def stage_storage():
     # check for processing columns in the Townships table
     # if it does not exist, create the columns
 
+
+
+
+
+
     
     
     
@@ -182,33 +187,62 @@ def stage_townships():
 
 
 def process_qqsec(intersected_gdf,geometry, suffix):
-        buffer = 175
+        buffer = 250
         polygon_nw, polygon_ne, polygon_se, polygon_sw = subdivide_polygon(geometry)
 
         # set the QSEC column to NW where polygon_nw intersects the intersected_gdf geometry and the QSEC is null
-        
-        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'modified'] = True
-        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'QQSEC'] = 'NW' + suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['qsec'].isnull()), 'qsec'] = suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'modified'] = 1
+        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'update'] = True
+        intersected_gdf.loc[(intersected_gdf.within(polygon_nw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'qqsec'] = 'NW' + suffix
 
-        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'modified'] = True
-        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'QQSEC'] = 'NE' + suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['qsec'].isnull()), 'qsec'] = suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'modified'] = 1
+        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'update'] = True
+        intersected_gdf.loc[(intersected_gdf.within(polygon_ne.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'qqsec'] = 'NE' + suffix
 
-        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'modified'] = True
-        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'QQSEC'] = 'SE' + suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['qsec'].isnull()), 'qsec'] = suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'modified'] = 1
+        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'update'] = True
+        intersected_gdf.loc[(intersected_gdf.within(polygon_se.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'qqsec'] = 'SE' + suffix
 
-        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'modified'] = True
-        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['QQSEC'].isnull()), 'QQSEC'] = 'SW' + suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['qsec'].isnull()), 'qsec'] = suffix
+        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'modified'] = 1
+        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'update'] = True
+        intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'qqsec'] = 'SW' + suffix
 
 
 def process_sections(township, cur, conn, pbar, crs):
+        
         sections = gpd.read_postgis(f"SELECT shape as geom, * FROM plssfirstdivision WHERE plssid = '{township['plssid']}'", os.getenv('DATABASE_URL'))
+
+        intersected = gpd.read_postgis(f"SELECT shape as geom, * FROM plssintersected WHERE plssid = '{township['plssid']}'", os.getenv('DATABASE_URL'))
+
+        # all the intersected rows have the QSEC column set then early return
+        if intersected['qqsec'].notnull().all() & intersected['qsec'].notnull().all():
+            pbar.update(1)
+            return
+        
+
+        # add update column to the intersected dataframe
+        intersected['update'] = False
+
+
         # loop through the sections
         second_divisions = []
         for index, section in sections.iterrows():
             # check if the section is valid
-            valid, poly,  = section_valid(section['geom'])
+
+            # check if the section valid is not null from the rowdata
+            valid = section["valid"]
+            if valid is None:
+
+                valid, poly,  = section_valid(section['geom'])
             # check if the section is already subdivided
             if valid == True:
+                # check if subdivisions already exist
+          
+                
                 # subdivide the section
                 nw, ne, se, sw = subdivide_polygon(section['geom'])
                 # create the second divisions by appending the first div dictioanry with the new geometry and the qsec
@@ -216,29 +250,77 @@ def process_sections(township, cur, conn, pbar, crs):
                 sectiondict['shape'] = MultiPolygon([nw])
                 sectiondict['qsec'] = 'NW'
                 second_divisions.append(sectiondict)
+                process_qqsec(intersected, nw, "NW")
+
 
                 sectiondict = section.to_dict()
                 sectiondict['shape'] = MultiPolygon([ne])
                 sectiondict['qsec'] = 'NE'
                 second_divisions.append(sectiondict)
+                process_qqsec(intersected, ne, "NE")
 
                 sectiondict = section.to_dict()
                 sectiondict['shape'] = MultiPolygon([se])
                 sectiondict['qsec'] = 'SE'
                 second_divisions.append(sectiondict)
+                process_qqsec(intersected, se, "SE")
 
                 sectiondict = section.to_dict()
                 sectiondict['shape'] = MultiPolygon([sw])
                 sectiondict['qsec'] = 'SW'
                 second_divisions.append(sectiondict)
+                process_qqsec(intersected, sw, "SW")
 
                 # update the valid column to 1
                 cur.execute("UPDATE plssfirstdivision SET valid = 1 WHERE frstdivid = %s", (section['frstdivid'],))
                 conn.commit()
 
             else:
-                cur.execute("UPDATE plssfirstdivision SET valid = 0 WHERE frstdivid = %s", (section['frstdivid'],))
-                conn.commit()
+                try:
+                    nw, ne, se, sw = irregular_subdivision(section['geom'], 2150/2)
+                    # create the second divisions by appending the first div dictioanry with the new geometry and the qsec
+                    sectiondict = section.to_dict()
+                    sectiondict['shape'] = MultiPolygon([nw])
+                    sectiondict['qsec'] = 'NW'
+                    second_divisions.append(sectiondict)
+                    process_qqsec(intersected, nw, "NW")
+
+                    sectiondict = section.to_dict()
+                    sectiondict['shape'] = MultiPolygon([ne])
+                    sectiondict['qsec'] = 'NE'
+                    second_divisions.append(sectiondict)
+                    process_qqsec(intersected, ne, "NE")
+
+                    sectiondict = section.to_dict()
+                    sectiondict['shape'] = MultiPolygon([se])
+                    sectiondict['qsec'] = 'SE'
+                    second_divisions.append(sectiondict)
+                    process_qqsec(intersected, se, "SE")
+
+                    sectiondict = section.to_dict()
+                    sectiondict['shape'] = MultiPolygon([sw])
+                    sectiondict['qsec'] = 'SW'
+                    second_divisions.append(sectiondict)
+                    process_qqsec(intersected, sw, "SW")
+
+                    # update the valid column to 0
+                    cur.execute("UPDATE plssfirstdivision SET valid = 0 WHERE frstdivid = %s", (section['frstdivid'],))
+                    conn.commit()
+                except Exception as e:
+                    pass
+
+
+        # get all the update rows from the intersected dataframe
+        update_rows = intersected[intersected['update'] == True]
+        # drop the update column from the intersected dataframe
+        update_rows = update_rows.drop(columns=['update'])
+
+        # update the intersected rows in the postgis database
+        for index, row in update_rows.iterrows():
+            cur.execute("UPDATE plssintersected SET qqsec = %s, qsec = %s, modified = 1 WHERE secdivid = %s", (row['qqsec'], row['qsec'], row['secdivid']))
+
+
+        conn.commit()
 
         if len(second_divisions) > 0:
             # create a geodataframe from the second_divisions list
@@ -280,9 +362,10 @@ def process_townships(state):
     # create indexes on the townships table for plssid
     cur.execute("CREATE INDEX IF NOT EXISTS plssid_idx ON plsstownship (plssid);")
 
-    # create indexes on the plssintersected table for frstdivid and plssid
+    # create indexes on the plssintersected table for frstdivid and plssid and secdivid
     cur.execute("CREATE INDEX IF NOT EXISTS frstdivid_idx ON plssintersected (frstdivid);")
     cur.execute("CREATE INDEX IF NOT EXISTS plssid_idx ON plssintersected (plssid);")
+    cur.execute("CREATE INDEX IF NOT EXISTS secdivid_idx ON plssintersected (secdivid);")
 
     conn.commit()
 
