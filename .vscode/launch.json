@@ -4,12 +4,22 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        // {
+        //     "name": "Python Debugger: Current File",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "app.py",
+        //     "console": "integratedTerminal"
+        // },
         {
-            "name": "Python Debugger: Current File",
+            "name": "Attach to Python Functions",
             "type": "debugpy",
-            "request": "launch",
-            "program": "app.py",
-            "console": "integratedTerminal"
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 9091
+            },
+            "preLaunchTask": "func: host start"
         }
     ]
 }
