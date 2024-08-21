@@ -18,6 +18,7 @@ FROM pepperlk/dev-gis
 
 # install gdal
 RUN apt-get update && apt-get install -y \
+    git \
     gdal-bin \
     libgdal-dev \
     python3-gdal \

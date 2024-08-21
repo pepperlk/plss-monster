@@ -5,7 +5,6 @@ import pandas as pd
 import geopandas as gpd
 from shapely import MultiPolygon
 from tqdm import tqdm
-from arcgis_helpers import get_arcgis_data, Query
 from subdivide import section_valid, subdivide_polygon, irregular_subdivision
 import shutil
 import threading
@@ -212,11 +211,20 @@ def process_qqsec(intersected_gdf,geometry, suffix):
         intersected_gdf.loc[(intersected_gdf.within(polygon_sw.buffer(buffer))) & (intersected_gdf['qqsec'].isnull()), 'qqsec'] = 'SW' + suffix
 
 
-def process_sections(township, cur, conn, pbar, crs):
+def process_sections(state, township, cur, conn, pbar, crs):
         
         sections = gpd.read_postgis(f"SELECT shape as geom, * FROM plssfirstdivision WHERE plssid = '{township['plssid']}'", os.getenv('DATABASE_URL'))
 
         intersected = gpd.read_postgis(f"SELECT shape as geom, * FROM plssintersected WHERE plssid = '{township['plssid']}'", os.getenv('DATABASE_URL'))
+
+
+        # create state folder if it does not exist
+        if not os.path.exists(f'plss-monster_tmp/{state}'):
+            os.makedirs(f'plss-monster_tmp/{state}')
+
+        # create the township folder if it does not exist
+        if not os.path.exists(f'plss-monster_tmp/{state}/{township["plssid"]}'):
+            os.makedirs(f'plss-monster_tmp/{state}/{township["plssid"]}')
 
         # all the intersected rows have the QSEC column set then early return
         if intersected['qqsec'].notnull().all() & intersected['qsec'].notnull().all():
@@ -320,11 +328,24 @@ def process_sections(township, cur, conn, pbar, crs):
             cur.execute("UPDATE plssintersected SET qqsec = %s, qsec = %s, modified = 1 WHERE secdivid = %s", (row['qqsec'], row['qsec'], row['secdivid']))
 
 
+        if len(sections) > 0:
+            # write the sections to a FlatGeoBuf in the township folder
+            sections.to_file(f'plss-monster_tmp/{state}/{township["plssid"]}/sections.fgb', driver='FlatGeobuf')
+
+        if len(intersected) > 0:
+            # wirite intersected to FlatGeoBuf in the township fodler
+            intersected.to_file(f'plss-monster_tmp/{state}/{township["plssid"]}/intersected.fgb', driver='FlatGeobuf')
+
+
         conn.commit()
 
         if len(second_divisions) > 0:
             # create a geodataframe from the second_divisions list
             second_divisions_gdf = gpd.GeoDataFrame(second_divisions, crs=crs, geometry='shape')
+
+            # write the second_divisions_gdf to a FlatGeoBuf in the township folder
+            second_divisions_gdf.to_file(f'plss-monster_tmp/{state}/{township["plssid"]}/second_divisions.fgb', driver='FlatGeobuf')
+
             # rename geom to shape
             # remove geom column
             second_divisions_gdf = second_divisions_gdf.drop(columns=['geom'])
@@ -374,7 +395,7 @@ def process_townships(state):
         futures = []
         for index, township in townships.iterrows():
             # get sections
-            future = executor.submit(process_sections, township, cur, conn, pbar, townships.crs)
+            future = executor.submit(process_sections, state, township, cur, conn, pbar, townships.crs)
             futures.append(future)
             
 

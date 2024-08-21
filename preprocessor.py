@@ -34,7 +34,7 @@ def run():
             print('Unzipping PLSS data...')
             os.system('unzip plss.zip')
             # rename directory *plss.gdb to plss.gdb
-            os.system('mv mv *plss.gdb plss.gdb')
+            os.system('mv *plss.gdb plss.gdb')
             # remove the *_State_*.gdb directory
             os.system('rm -r *_State_*.gdb')
             # remove the zip file

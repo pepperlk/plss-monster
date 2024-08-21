@@ -53,9 +53,9 @@ def new_ts_queue(item: str, output: func.Out[func.QueueMessage]):
 
 
 
-@app.route(route="get_township/{plssid:alpha}", trigger_arg_name="plssid", auth_level=func.AuthLevel.ANONYMOUS)
-def http_get_township(req: func.HttpRequest, plssid: str) -> func.HttpResponse:
-    logging.info("Python HTTP trigger function processed a request.")
-    logging.info("Getting townships")
-    townships = get_township(plssid)
-    return func.HttpResponse(f"Townships for PLSSID {plssid}: {townships}", status_code=200)
+# @app.route(route="get_township/{plssid:alpha}", trigger_arg_name="plssid", auth_level=func.AuthLevel.ANONYMOUS)
+# def http_get_township(req: func.HttpRequest, plssid: str) -> func.HttpResponse:
+#     logging.info("Python HTTP trigger function processed a request.")
+#     logging.info("Getting townships")
+#     townships = get_township(plssid)
+#     return func.HttpResponse(f"Townships for PLSSID {plssid}: {townships}", status_code=200)
